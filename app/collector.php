@@ -77,8 +77,11 @@ final class KerioApiClient
         return $decoded;
     }
 
-    public function getLogTail(string $logName, int $count = 5): array
+    public function getLogBatch(string $logName, int $fromLine, int $count): array
     {
+        if (!in_array($logName, ['connection', 'http'], true)) {
+            throw new InvalidArgumentException('Unsupported Kerio log type.');
+        }
         $login = $this->request('Session.login', [
             'userName' => $this->username,
             'password' => $this->password,
@@ -88,22 +91,16 @@ final class KerioApiClient
                 'version' => '1.0',
             ],
         ]);
-
         $token = $login['result']['token'] ?? null;
         if (!is_string($token) || $token === '') {
             throw new RuntimeException('Kerio login response did not contain a session token.');
         }
-
-        if (!in_array($logName, ['connection', 'http'], true)) {
-            throw new InvalidArgumentException('Unsupported Kerio log type.');
-        }
-        $count = max(1, min(50, $count));
+        $count = max(1, min(50000, $count));
         $response = $this->request('Logs.get', [
             'logName' => $logName,
-            'fromLine' => -1,
+            'fromLine' => $fromLine,
             'countLines' => $count,
         ], $token);
-
         $result = $response['result'] ?? [];
         $rows = $result['viewport'] ?? [];
         if (!is_array($rows)) {
@@ -117,14 +114,19 @@ final class KerioApiClient
                 $lines[] = $row;
             }
         }
-
         return [
             'log' => $logName,
+            'from_line' => $fromLine,
             'total_items' => (int)($result['totalItems'] ?? 0),
             'returned' => count($lines),
             'lines' => $lines,
             'raw_result_keys' => array_keys($result),
         ];
+    }
+
+    public function getLogTail(string $logName, int $count = 5): array
+    {
+        return $this->getLogBatch($logName, -1, max(1, min(50, $count)));
     }
 
     public function __destruct()
