@@ -50,6 +50,11 @@ function pageStart(string $title, string $active): void {
 function pageEnd(): void {
  echo '</main><script src="assets/app.js"></script></body></html>';
 }
+function formatBytes(mixed $bytes): string {
+ $n=max(0,(float)$bytes); $units=['B','KB','MB','GB','TB']; $i=0;
+ while($n>=1024 && $i<count($units)-1){$n/=1024;$i++;}
+ return number_format($n,$i===0?0:2).' '.$units[$i];
+}
 function statCard(string $label, mixed $value, string $hint=''): void {
     echo '<section class="stat"><span>'.e($label).'</span><strong>'.e(number_format((float)$value, 0)).'</strong><small>'.e($hint).'</small></section>';
 }
