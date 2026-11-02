@@ -9,8 +9,10 @@ th[data-sort=asc]:after{content:" ▲";color:#54d6b0}
 th[data-sort=desc]:after{content:" ▼";color:#54d6b0}
 tr[hidden]{display:none}
 .report-chart{display:block;width:100%;height:auto;min-height:180px}
-.chart-legend{display:flex;gap:18px;flex-wrap:wrap;padding:10px 4px;color:#aab8ce;font-size:12px}
-.chart-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:6px}
+.chart-legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 4px 2px;margin-top:8px;border-top:1px solid #26364d;color:#dbe5f3;font-size:12px}
+.chart-legend>strong{color:#91a2ba;font-weight:600}
+.chart-legend-item{display:inline-flex;align-items:center;gap:7px}
+.chart-legend i{display:inline-block;flex:0 0 12px;width:12px;height:12px;border-radius:3px;box-shadow:0 0 0 1px #ffffff30}
 td a{color:#68d9bc;overflow-wrap:anywhere}
 
 .table-query{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px}
