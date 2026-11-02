@@ -48,8 +48,6 @@
     search.addEventListener("input", filter);
     filter();
   });
-})();
-
   // Keep Kerio data fresh only while an application page is open and visible.
   (() => {
     let running = false;
