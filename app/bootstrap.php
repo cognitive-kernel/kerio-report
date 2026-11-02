@@ -42,17 +42,37 @@ function dateFilters(): array {
 function pageStart(string $title, string $active): void {
     global $config;
     $name = $config['app']['name'] ?? 'Kerio Report';
-    echo '<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.e($title).' | '.e($name).'</title><link rel="stylesheet" href="assets/app.css"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script></head><body><aside class="sidebar"><div class="brand">Kerio <b>Report</b></div><nav>';
+    echo '<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.e($title).' | '.e($name).'</title><link rel="stylesheet" href="assets/app.css"></head><body><aside class="sidebar"><div class="brand">Kerio <b>Report</b></div><nav>';
     $links = ['index.php'=>'داشبورد کلی','range.php'=>'گزارش بازه زمانی','systems.php'=>'گزارش سیستم‌ها','realtime.php'=>'وضعیت لحظه‌ای','connections.php'=>'اتصالات شبکه','websites.php'=>'وب‌سایت‌ها','system-websites.php'=>'لینک‌های هر سیستم'];
     foreach ($links as $href=>$label) echo '<a class="'.($active===$href?'active':'').'" href="'.$href.'">'.e($label).'</a>';
     echo '</nav><div class="side-note">گزارش‌گیری از داده‌های ذخیره‌شده در Kerio Report</div></aside><main class="main"><header><div><small>سامانه مانیتورینگ شبکه</small><h1>'.e($title).'</h1></div><span class="live-dot">ذخیره‌سازی محلی</span></header>';
 }
-function pageEnd(): void { echo '</main></body></html>'; }
+function pageEnd(): void {
+ echo '</main><script src="assets/app.js"></script></body></html>';
+}
 function statCard(string $label, mixed $value, string $hint=''): void {
     echo '<section class="stat"><span>'.e($label).'</span><strong>'.e(number_format((float)$value, 0)).'</strong><small>'.e($hint).'</small></section>';
 }
 function chart(string $id, string $type, array $labels, array $datasets): void {
-    echo '<section class="panel chart-panel"><canvas id="'.e($id).'" height="105"></canvas></section><script>new Chart(document.getElementById('.json_encode($id).'),{type:'.json_encode($type).',data:{labels:'.json_encode($labels, JSON_UNESCAPED_UNICODE).',datasets:'.json_encode($datasets, JSON_UNESCAPED_UNICODE).'},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true}}}});</script>';
+ $width=900; $height=280; $left=58; $right=18; $top=18; $bottom=48;
+ $values=[]; foreach($datasets as $ds) foreach(($ds['data']??[]) as $v) $values[]=max(0,(float)$v);
+ $max=max($values?:[1]); if($max<=0)$max=1;
+ $plotW=$width-$left-$right; $plotH=$height-$top-$bottom;
+ $svg='<svg class="report-chart" viewBox="0 0 '.$width.' '.$height.'" role="img" aria-label="'.e($id).'">';
+ for($i=0;$i<=4;$i++){ $y=$top+$plotH*$i/4; $val=$max*(4-$i)/4; $svg.='<line x1="'.$left.'" y1="'.$y.'" x2="'.($width-$right).'" y2="'.$y.'" stroke="#2b3d55"/><text x="'.($left-8).'" y="'.($y+4).'" text-anchor="end" fill="#9aacc4" font-size="11">'.e(number_format($val,1)).'</text>'; }
+ $colors=['#54d6b0','#65a9ff','#f2bd65','#d88aff'];
+ $n=max(1,count($labels)); $step=$plotW/$n;
+ foreach($datasets as $di=>$ds){$points=[];$data=$ds['data']??[];
+  foreach($data as $i=>$v){$x=$left+$step*($i+.5);$y=$top+$plotH-((float)$v/$max)*$plotH;
+   if($type==='bar'){$bw=max(3,min(24,$step/(count($datasets)+1)));$x=$x+($di-(count($datasets)-1)/2)*$bw;$svg.='<rect x="'.($x-$bw/2).'" y="'.$y.'" width="'.$bw.'" height="'.max(0,$top+$plotH-$y).'" rx="2" fill="'.$colors[$di%4].'"><title>'.e($ds['label']??'').': '.e($v).'</title></rect>';}
+   else {$points[]=$x.','.$y;}
+  }
+  if($type!=='bar' && $points)$svg.='<polyline fill="none" stroke="'.$colors[$di%4].'" stroke-width="2.5" points="'.implode(' ',$points).'"/>';
+ }
+ foreach($labels as $i=>$label){if($n>14 && $i%ceil($n/14)!==0)continue;$x=$left+$step*($i+.5);$svg.='<text x="'.$x.'" y="'.($height-16).'" text-anchor="middle" fill="#9aacc4" font-size="10">'.e(mb_substr((string)$label,0,12)).'</text>';}
+ $svg.='</svg><div class="chart-legend">';
+ foreach($datasets as $i=>$ds)$svg.='<span><i style="background:'.$colors[$i%4].'"></i>'.e($ds['label']??'').'</span>';
+ $svg.='</div><section class="panel chart-panel">'.$svg.'</section>'; echo $svg;
 }
 function rangeForm(string $from, string $to): void {
     echo '<form class="filters" method="get"><label>از تاریخ <input type="date" name="from" value="'.e($from).'"></label><label>تا تاریخ <input type="date" name="to" value="'.e($to).'"></label><button>اعمال بازه</button></form>';
