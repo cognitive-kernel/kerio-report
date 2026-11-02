@@ -146,8 +146,8 @@ function collectActiveHosts(): array
 
     try {
         $find = $pdo->prepare(
-            'SELECT id FROM devices WHERE ip_address = :ip AND
-             (mac_address = :mac OR (mac_address IS NULL AND :mac_null IS NULL))
+            'SELECT id FROM devices WHERE ip_address = ? AND
+             (mac_address = ? OR (mac_address IS NULL AND ? IS NULL))
              LIMIT 1'
         );
         $insert = $pdo->prepare(
@@ -169,7 +169,7 @@ function collectActiveHosts(): array
             $hostname = trim((string)($host['hostname'] ?? ''));
             $hostname = $hostname !== '' ? $hostname : null;
 
-            $find->execute(['ip' => $ip, 'mac' => $mac, 'mac_null' => $mac]);
+            $find->execute([$ip, $mac, $mac]);
             $id = $find->fetchColumn();
             if ($id !== false) {
                 $update->execute(['hostname' => $hostname, 'mac' => $mac, 'id' => $id]);
