@@ -10,8 +10,8 @@ try {
     $result = [
         'success' => true,
         'started_at' => date(DATE_ATOM),
-        'connection' => $sync->sync('connection', 1000, 20),
-        'http' => $sync->sync('http', 1000, 20),
+        'connection' => $sync->sync('connection', 5000, 20),
+        'http' => $sync->sync('http', 5000, 20),
         'finished_at' => date(DATE_ATOM),
     ];
     echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_INVALID_UTF8_SUBSTITUTE) . PHP_EOL;
