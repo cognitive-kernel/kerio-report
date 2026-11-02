@@ -51,10 +51,12 @@ function queryPage(string $fromSql, string $whereSql, array $params, array $sear
     $sort = (string)($_GET['sort'] ?? $defaultSort);
     if (!isset($sortColumns[$sort])) $sort = $defaultSort;
     $direction = strtolower((string)($_GET['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
-    $total = (int)queryValue('SELECT COUNT(*) FROM ' . $fromSql . $whereSql, $params);
+    $whereSql = trim($whereSql);
+    $fromClause = trim($fromSql) . ($whereSql !== '' ? ' ' . $whereSql : '');
+    $total = (int)queryValue('SELECT COUNT(*) FROM ' . $fromClause, $params);
     $pages = max(1, (int)ceil($total / $pageSize));
     $page = min($page, $pages);
-    $sql = 'SELECT * FROM ' . $fromSql . $whereSql . ' ORDER BY ' . $sortColumns[$sort] . ' ' . $direction . ' LIMIT ' . $pageSize . ' OFFSET ' . (($page - 1) * $pageSize);
+    $sql = 'SELECT * FROM ' . $fromClause . ' ORDER BY ' . $sortColumns[$sort] . ' ' . $direction . ' LIMIT ' . $pageSize . ' OFFSET ' . (($page - 1) * $pageSize);
     return ['rows' => queryRows($sql, $params), 'total' => $total, 'page' => $page, 'pages' => $pages, 'page_size' => $pageSize, 'q' => $q, 'sort' => $sort, 'dir' => strtolower($direction)];
 }
 function tableControls(array $result, array $labels): void {
@@ -88,7 +90,7 @@ function pageStart(string $title, string $active): void {
     echo '<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.e($title).' | '.e($name).'</title><link rel="stylesheet" href="assets/app.css"></head><body><aside class="sidebar"><div class="brand">Kerio <b>Report</b></div><nav>';
     $links = ['index.php'=>'داشبورد کلی','range.php'=>'گزارش بازه زمانی','systems.php'=>'گزارش سیستم‌ها','realtime.php'=>'وضعیت لحظه‌ای','connections.php'=>'اتصالات شبکه','websites.php'=>'وب‌سایت‌ها','system-websites.php'=>'لینک‌های هر سیستم'];
     foreach ($links as $href=>$label) echo '<a class="'.($active===$href?'active':'').'" href="'.$href.'">'.e($label).'</a>';
-    echo '</nav><div class="side-note">گزارش‌گیری از داده‌های ذخیره‌شده در Kerio Report</div></aside><main class="main"><header><div><small>سامانه مانیتورینگ شبکه</small><h1>'.e($title).'</h1></div><span class="live-dot">ذخیره‌سازی محلی</span></header>';
+    echo '</nav><div class="side-note">گزارش‌گیری از داده‌های ذخیره‌شده در Kerio Report</div></aside><main class="main"><header><div><h1>'.e($title).'</h1></div><span class="live-dot">ذخیره‌سازی محلی</span></header>';
 }
 function pageEnd(): void { echo '</main><script src="assets/app.js"></script></body></html>'; }
 function formatBytes(mixed $bytes): string {

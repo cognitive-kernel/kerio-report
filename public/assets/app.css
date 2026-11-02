@@ -25,3 +25,7 @@ td a{color:#68d9bc;overflow-wrap:anywhere}
 .pagination a:hover,.pagination a.current{background:#35b995;color:#05251d;border-color:#35b995}
 .url-cell{max-width:560px;white-space:normal;overflow-wrap:anywhere}
 .refresh-status{font-size:11px;color:#91a2ba;max-width:260px;text-align:left}
+
+.top-consumers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.top-consumers .panel{min-width:0}
+@media(max-width:900px){.top-consumers{grid-template-columns:1fr}}
