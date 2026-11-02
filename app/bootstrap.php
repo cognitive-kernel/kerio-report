@@ -75,9 +75,11 @@ function chart(string $id, string $type, array $labels, array $datasets): void {
   if($type!=='bar' && $points)$svg.='<polyline fill="none" stroke="'.$colors[$di%4].'" stroke-width="2.5" points="'.implode(' ',$points).'"/>';
  }
  foreach($labels as $i=>$label){if($n>14 && $i%ceil($n/14)!==0)continue;$x=$left+$step*($i+.5);$svg.='<text x="'.$x.'" y="'.($height-16).'" text-anchor="middle" fill="#9aacc4" font-size="10">'.e(mb_substr((string)$label,0,12)).'</text>';}
- $svg.='</svg><div class="chart-legend">';
- foreach($datasets as $i=>$ds)$svg.='<span><i style="background:'.$colors[$i%4].'"></i>'.e($ds['label']??'').'</span>';
- $svg.='</div><section class="panel chart-panel">'.$svg.'</section>'; echo $svg;
+ $svg.='</svg>';
+ $legend='<div class="chart-legend">';
+ foreach($datasets as $i=>$ds)$legend.='<span><i style="background:'.$colors[$i%4].'"></i>'.e($ds['label']??'').'</span>';
+ $legend.='</div>';
+ echo '<section class="panel chart-panel">'.$svg.$legend.'</section>';
 }
 function rangeForm(string $from, string $to): void {
     echo '<form class="filters" method="get"><label>از تاریخ <input type="date" name="from" value="'.e($from).'"></label><label>تا تاریخ <input type="date" name="to" value="'.e($to).'"></label><button>اعمال بازه</button></form>';
