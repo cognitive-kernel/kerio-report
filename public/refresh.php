@@ -27,6 +27,7 @@ try {
 
     $startedAt = date(DATE_ATOM);
     $collector = collectActiveHosts();
+    $liveTop = queryRows('SELECT d.hostname, d.ip_address, t.sampled_at, (COALESCE(t.download_delta_kb,0) + COALESCE(t.upload_delta_kb,0)) AS consumption_kb FROM traffic_samples t INNER JOIN (SELECT device_id, MAX(sampled_at) AS sampled_at FROM traffic_samples GROUP BY device_id) latest ON latest.device_id = t.device_id AND latest.sampled_at = t.sampled_at INNER JOIN devices d ON d.id = t.device_id ORDER BY consumption_kb DESC LIMIT 10');
 
     $api = new KerioApiClient($config['kerio'] ?? []);
     $sync = new KerioLogSynchronizer($pdo, $api);
@@ -41,7 +42,9 @@ try {
         'collector' => [
             'active_hosts' => $collector['received'],
             'stored_devices' => $collector['stored'],
+            'traffic_samples' => $collector['samples'] ?? 0,
         ],
+        'live_top' => $liveTop,
         'connection' => $connection,
         'http' => $http,
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_INVALID_UTF8_SUBSTITUTE);

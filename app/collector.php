@@ -196,6 +196,8 @@ function collectActiveHosts(): array
     $pdo = db();
     $pdo->beginTransaction();
 
+    $stored = 0;
+    $samples = 0;
     try {
         $find = $pdo->prepare(
             'SELECT id FROM devices WHERE ip_address = ? AND
@@ -210,30 +212,68 @@ function collectActiveHosts(): array
             'UPDATE devices SET hostname = :hostname, last_seen = NOW(), is_active = 1,
              mac_address = COALESCE(:mac, mac_address) WHERE id = :id'
         );
+        $previousSample = $pdo->prepare(
+            'SELECT MAX(sampled_at) FROM traffic_samples WHERE device_id = ?'
+        );
+        $sample = $pdo->prepare(
+            'INSERT INTO traffic_samples
+                (device_id, sampled_at, total_download_kb, total_upload_kb, download_delta_kb, upload_delta_kb)
+             VALUES (?, NOW(), NULL, NULL, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                download_delta_kb = VALUES(download_delta_kb),
+                upload_delta_kb = VALUES(upload_delta_kb)'
+        );
 
         foreach ($hosts as $host) {
+            if (!is_array($host)) {
+                continue;
+            }
             $ip = trim((string)($host['ip'] ?? $host['ipAddressFromDHCP'] ?? ''));
             if ($ip === '' || filter_var($ip, FILTER_VALIDATE_IP) === false) {
                 continue;
             }
             $mac = trim((string)($host['macAddress'] ?? ''));
             $mac = $mac !== '' ? $mac : null;
-            $hostname = trim((string)($host['hostname'] ?? ''));
+            $hostname = trim((string)($host['hostname'] ?? $host['hostName'] ?? ''));
             $hostname = $hostname !== '' ? $hostname : null;
 
             $find->execute([$ip, $mac, $mac]);
             $id = $find->fetchColumn();
             if ($id !== false) {
-                $update->execute(['hostname' => $hostname, 'mac' => $mac, 'id' => $id]);
+                $deviceId = (int)$id;
+                $update->execute(['hostname' => $hostname, 'mac' => $mac, 'id' => $deviceId]);
             } else {
                 $insert->execute(['mac' => $mac, 'ip' => $ip, 'hostname' => $hostname]);
+                $deviceId = (int)$pdo->lastInsertId();
             }
+            $stored++;
+
+            // Kerio reports currentDownload/currentUpload as KB per second.
+            // Store the estimated transferred KB over the elapsed sampling interval.
+            $downloadRate = max(0.0, (float)($host['currentDownload'] ?? 0));
+            $uploadRate = max(0.0, (float)($host['currentUpload'] ?? 0));
+            $previousSample->execute([$deviceId]);
+            $lastSampleAt = $previousSample->fetchColumn();
+            $elapsedSeconds = 10;
+            if (is_string($lastSampleAt) && $lastSampleAt !== '') {
+                $elapsedQuery = $pdo->prepare('SELECT TIMESTAMPDIFF(SECOND, ?, NOW())');
+                $elapsedQuery->execute([$lastSampleAt]);
+                $elapsedSeconds = max(1, min(60, (int)$elapsedQuery->fetchColumn()));
+            }
+            $sample->execute([
+                $deviceId,
+                round($downloadRate * $elapsedSeconds, 3),
+                round($uploadRate * $elapsedSeconds, 3),
+            ]);
+            $samples++;
         }
 
         $pdo->prepare('UPDATE devices SET is_active = 0')->execute();
-        // Mark the hosts returned by this successful snapshot as active again.
         $mark = $pdo->prepare('UPDATE devices SET is_active = 1, last_seen = NOW() WHERE ip_address = ?');
         foreach ($hosts as $host) {
+            if (!is_array($host)) {
+                continue;
+            }
             $ip = trim((string)($host['ip'] ?? $host['ipAddressFromDHCP'] ?? ''));
             if ($ip !== '' && filter_var($ip, FILTER_VALIDATE_IP) !== false) {
                 $mark->execute([$ip]);
@@ -246,5 +286,5 @@ function collectActiveHosts(): array
         throw $e;
     }
 
-    return ['received' => count($hosts), 'stored' => count($hosts)];
+    return ['received' => count($hosts), 'stored' => $stored, 'samples' => $samples];
 }
