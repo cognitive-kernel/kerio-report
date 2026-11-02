@@ -39,6 +39,49 @@ function dateFilters(): array {
     if ($from > $to) throw new InvalidArgumentException('Start date must not exceed end date');
     return [$from . ' 00:00:00', $to . ' 23:59:59', $from, $to];
 }
+
+/** Fetch a fully database-filtered, database-sorted page. SQL fragments must be authored by the application. */
+function queryPage(string $fromSql, string $whereSql, array $params, array $searchColumns, array $sortColumns, string $defaultSort, int $pageSize = 50): array {
+    $q = trim((string)($_GET['q'] ?? ''));
+    if ($q !== '' && $searchColumns) {
+        $whereSql .= ($whereSql === '' ? ' WHERE ' : ' AND ') . '(' . implode(' OR ', array_map(static fn($column) => 'CAST(' . $column . ' AS CHAR) LIKE ?', $searchColumns)) . ')';
+        foreach ($searchColumns as $_) $params[] = '%' . $q . '%';
+    }
+    $page = max(1, (int)($_GET['page'] ?? 1));
+    $sort = (string)($_GET['sort'] ?? $defaultSort);
+    if (!isset($sortColumns[$sort])) $sort = $defaultSort;
+    $direction = strtolower((string)($_GET['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+    $total = (int)queryValue('SELECT COUNT(*) FROM ' . $fromSql . $whereSql, $params);
+    $pages = max(1, (int)ceil($total / $pageSize));
+    $page = min($page, $pages);
+    $sql = 'SELECT * FROM ' . $fromSql . $whereSql . ' ORDER BY ' . $sortColumns[$sort] . ' ' . $direction . ' LIMIT ' . $pageSize . ' OFFSET ' . (($page - 1) * $pageSize);
+    return ['rows' => queryRows($sql, $params), 'total' => $total, 'page' => $page, 'pages' => $pages, 'page_size' => $pageSize, 'q' => $q, 'sort' => $sort, 'dir' => strtolower($direction)];
+}
+function tableControls(array $result, array $labels): void {
+    $query = $_GET;
+    echo '<form class="table-query" method="get">';
+    foreach (['from','to','device'] as $key) if (isset($query[$key]) && $query[$key] !== '') echo '<input type="hidden" name="'.e($key).'" value="'.e($query[$key]).'">';
+    echo '<input type="search" name="q" value="'.e($result['q']).'" placeholder="جست‌وجو در تمام رکوردهای دیتابیس">';
+    echo '<input type="hidden" name="sort" value="'.e($result['sort']).'"><input type="hidden" name="dir" value="'.e($result['dir']).'"><button>جست‌وجو</button><span class="table-count">نمایش '.e(count($result['rows'])).' از '.e($result['total']).' رکورد؛ صفحه '.e($result['page']).' از '.e($result['pages']).'</span></form>';
+}
+function tableHeader(array $labels, array $result): void {
+    echo '<thead><tr>';
+    foreach ($labels as $key => $label) {
+        $next = $result['sort'] === (string)$key && $result['dir'] === 'asc' ? 'desc' : 'asc';
+        $params = $_GET; $params['sort'] = $key; $params['dir'] = $next; $params['page'] = 1;
+        echo '<th><a class="sort-link" href="?'.e(http_build_query($params)).'">'.e($label).($result['sort'] === (string)$key ? ($result['dir'] === 'asc' ? ' ▲' : ' ▼') : '').'</a></th>';
+    }
+    echo '</tr></thead>';
+}
+function tablePagination(array $result): void {
+    if ($result['pages'] <= 1) return;
+    echo '<nav class="pagination" aria-label="صفحه‌بندی">';
+    foreach (array_unique([1, max(1, $result['page'] - 1), $result['page'], min($result['pages'], $result['page'] + 1), $result['pages']]) as $page) {
+        $params = $_GET; $params['page'] = $page;
+        echo '<a class="'.($page === $result['page'] ? 'current' : '').'" href="?'.e(http_build_query($params)).'">'.e($page).'</a>';
+    }
+    echo '</nav>';
+}
 function pageStart(string $title, string $active): void {
     global $config;
     $name = $config['app']['name'] ?? 'Kerio Report';
@@ -47,39 +90,27 @@ function pageStart(string $title, string $active): void {
     foreach ($links as $href=>$label) echo '<a class="'.($active===$href?'active':'').'" href="'.$href.'">'.e($label).'</a>';
     echo '</nav><div class="side-note">گزارش‌گیری از داده‌های ذخیره‌شده در Kerio Report</div></aside><main class="main"><header><div><small>سامانه مانیتورینگ شبکه</small><h1>'.e($title).'</h1></div><span class="live-dot">ذخیره‌سازی محلی</span></header>';
 }
-function pageEnd(): void {
- echo '</main><script src="assets/app.js"></script></body></html>';
-}
+function pageEnd(): void { echo '</main><script src="assets/app.js"></script></body></html>'; }
 function formatBytes(mixed $bytes): string {
- $n=max(0,(float)$bytes); $units=['B','KB','MB','GB','TB']; $i=0;
- while($n>=1024 && $i<count($units)-1){$n/=1024;$i++;}
- return number_format($n,$i===0?0:2).' '.$units[$i];
+    $n=max(0,(float)$bytes); $units=['B','KB','MB','GB','TB']; $i=0;
+    while($n>=1024 && $i<count($units)-1){$n/=1024;$i++;}
+    return number_format($n,$i===0?0:2).' '.$units[$i];
 }
 function statCard(string $label, mixed $value, string $hint=''): void {
     echo '<section class="stat"><span>'.e($label).'</span><strong>'.e(number_format((float)$value, 0)).'</strong><small>'.e($hint).'</small></section>';
 }
 function chart(string $id, string $type, array $labels, array $datasets): void {
- $width=900; $height=280; $left=58; $right=18; $top=18; $bottom=48;
- $values=[]; foreach($datasets as $ds) foreach(($ds['data']??[]) as $v) $values[]=max(0,(float)$v);
- $max=max($values?:[1]); if($max<=0)$max=1;
- $plotW=$width-$left-$right; $plotH=$height-$top-$bottom;
- $svg='<svg class="report-chart" viewBox="0 0 '.$width.' '.$height.'" role="img" aria-label="'.e($id).'">';
- for($i=0;$i<=4;$i++){ $y=$top+$plotH*$i/4; $val=$max*(4-$i)/4; $svg.='<line x1="'.$left.'" y1="'.$y.'" x2="'.($width-$right).'" y2="'.$y.'" stroke="#2b3d55"/><text x="'.($left-8).'" y="'.($y+4).'" text-anchor="end" fill="#9aacc4" font-size="11">'.e(number_format($val,1)).'</text>'; }
- $colors=['#54d6b0','#65a9ff','#f2bd65','#d88aff'];
- $n=max(1,count($labels)); $step=$plotW/$n;
- foreach($datasets as $di=>$ds){$points=[];$data=$ds['data']??[];
-  foreach($data as $i=>$v){$x=$left+$step*($i+.5);$y=$top+$plotH-((float)$v/$max)*$plotH;
-   if($type==='bar'){$bw=max(3,min(24,$step/(count($datasets)+1)));$x=$x+($di-(count($datasets)-1)/2)*$bw;$svg.='<rect x="'.($x-$bw/2).'" y="'.$y.'" width="'.$bw.'" height="'.max(0,$top+$plotH-$y).'" rx="2" fill="'.$colors[$di%4].'"><title>'.e($ds['label']??'').': '.e($v).'</title></rect>';}
-   else {$points[]=$x.','.$y;}
-  }
-  if($type!=='bar' && $points)$svg.='<polyline fill="none" stroke="'.$colors[$di%4].'" stroke-width="2.5" points="'.implode(' ',$points).'"/>';
- }
- foreach($labels as $i=>$label){if($n>14 && $i%ceil($n/14)!==0)continue;$x=$left+$step*($i+.5);$svg.='<text x="'.$x.'" y="'.($height-16).'" text-anchor="middle" fill="#9aacc4" font-size="10">'.e(mb_substr((string)$label,0,12)).'</text>';}
- $svg.='</svg>';
- $legend='<div class="chart-legend">';
- foreach($datasets as $i=>$ds)$legend.='<span><i style="background:'.$colors[$i%4].'"></i>'.e($ds['label']??'').'</span>';
- $legend.='</div>';
- echo '<section class="panel chart-panel">'.$svg.$legend.'</section>';
+    $width=900; $height=280; $left=58; $right=18; $top=18; $bottom=48;
+    $values=[]; foreach($datasets as $ds) foreach(($ds['data']??[]) as $v) $values[]=max(0,(float)$v);
+    $max=max($values?:[1]); if($max<=0)$max=1;
+    $plotW=$width-$left-$right; $plotH=$height-$top-$bottom;
+    $svg='<svg class="report-chart" viewBox="0 0 '.$width.' '.$height.'" role="img" aria-label="'.e($id).'">';
+    for($i=0;$i<=4;$i++){ $y=$top+$plotH*$i/4; $val=$max*(4-$i)/4; $svg.='<line x1="'.$left.'" y1="'.$y.'" x2="'.($width-$right).'" y2="'.$y.'" stroke="#2b3d55"/><text x="'.($left-8).'" y="'.($y+4).'" text-anchor="end" fill="#9aacc4" font-size="11">'.e(number_format($val,1)).'</text>'; }
+    $colors=['#54d6b0','#65a9ff','#f2bd65','#d88aff']; $n=max(1,count($labels)); $step=$plotW/$n;
+    foreach($datasets as $di=>$ds){$points=[];$data=$ds['data']??[];foreach($data as $i=>$v){$x=$left+$step*($i+.5);$y=$top+$plotH-((float)$v/$max)*$plotH;if($type==='bar'){$bw=max(3,min(24,$step/(count($datasets)+1)));$x+=($di-(count($datasets)-1)/2)*$bw;$svg.='<rect x="'.($x-$bw/2).'" y="'.$y.'" width="'.$bw.'" height="'.max(0,$top+$plotH-$y).'" rx="2" fill="'.$colors[$di%4].'"><title>'.e($ds['label']??'').': '.e($v).'</title></rect>';}else{$points[]=$x.','.$y;}}if($type!=='bar'&&$points){foreach($points as $point){[$cx,$cy]=array_map('floatval',explode(',',$point));$svg.='<circle cx="'.$cx.'" cy="'.$cy.'" r="3" fill="'.$colors[$di%4].'"/>';}if(count($points)>1)$svg.='<polyline fill="none" stroke="'.$colors[$di%4].'" stroke-width="2.5" points="'.implode(' ',$points).'"/>';}}
+    foreach($labels as $i=>$label){if($n>14&&$i%ceil($n/14)!==0)continue;$x=$left+$step*($i+.5);$short=function_exists('mb_substr')?mb_substr((string)$label,0,12):substr((string)$label,0,12);$svg.='<text x="'.$x.'" y="'.($height-16).'" text-anchor="middle" fill="#9aacc4" font-size="10">'.e($short).'</text>';}
+    $svg.='</svg>'; $legend='<div class="chart-legend">';foreach($datasets as $i=>$ds)$legend.='<span><i style="background:'.$colors[$i%4].'"></i>'.e($ds['label']??'').'</span>';$legend.='</div>';
+    echo '<section class="panel chart-panel">'.$svg.$legend.'</section>';
 }
 function rangeForm(string $from, string $to): void {
     echo '<form class="filters" method="get"><label>از تاریخ <input type="date" name="from" value="'.e($from).'"></label><label>تا تاریخ <input type="date" name="to" value="'.e($to).'"></label><button>اعمال بازه</button></form>';
