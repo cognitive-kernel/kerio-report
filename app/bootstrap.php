@@ -43,7 +43,7 @@ function pageStart(string $title, string $active): void {
     global $config;
     $name = $config['app']['name'] ?? 'Kerio Report';
     echo '<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'.e($title).' | '.e($name).'</title><link rel="stylesheet" href="assets/app.css"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script></head><body><aside class="sidebar"><div class="brand">Kerio <b>Report</b></div><nav>';
-    $links = ['index.php'=>'داشبورد کلی','range.php'=>'گزارش بازه زمانی','systems.php'=>'گزارش سیستم‌ها','realtime.php'=>'وضعیت لحظه‌ای','connections.php'=>'اتصالات شبکه','websites.php'=>'وب‌سایت‌ها'];
+    $links = ['index.php'=>'داشبورد کلی','range.php'=>'گزارش بازه زمانی','systems.php'=>'گزارش سیستم‌ها','realtime.php'=>'وضعیت لحظه‌ای','connections.php'=>'اتصالات شبکه','websites.php'=>'وب‌سایت‌ها','system-websites.php'=>'لینک‌های هر سیستم'];
     foreach ($links as $href=>$label) echo '<a class="'.($active===$href?'active':'').'" href="'.$href.'">'.e($label).'</a>';
     echo '</nav><div class="side-note">گزارش‌گیری از داده‌های ذخیره‌شده در Kerio Report</div></aside><main class="main"><header><div><small>سامانه مانیتورینگ شبکه</small><h1>'.e($title).'</h1></div><span class="live-dot">ذخیره‌سازی محلی</span></header>';
 }
