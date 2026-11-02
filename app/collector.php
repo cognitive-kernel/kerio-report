@@ -10,6 +10,7 @@ final class KerioApiClient
     private string $password;
     private string $application;
     private bool $verifyTls;
+    private $curlHandle;
 
     public function __construct(array $settings)
     {
@@ -25,6 +26,8 @@ final class KerioApiClient
         if (!extension_loaded('curl')) {
             throw new RuntimeException('PHP cURL extension is required.');
         }
+        $this->curlHandle = curl_init($this->url);
+        curl_setopt($this->curlHandle, CURLOPT_COOKIEFILE, '');
     }
 
     private function request(string $method, array $params, ?string $token = null): array
@@ -41,7 +44,7 @@ final class KerioApiClient
             $headers[] = 'X-Token: ' . $token;
         }
 
-        $ch = curl_init($this->url);
+        $ch = $this->curlHandle;
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $payload,
@@ -51,13 +54,11 @@ final class KerioApiClient
             CURLOPT_TIMEOUT => 45,
             CURLOPT_SSL_VERIFYPEER => $this->verifyTls,
             CURLOPT_SSL_VERIFYHOST => $this->verifyTls ? 2 : 0,
-            CURLOPT_COOKIEFILE => '',
         ]);
 
         $body = curl_exec($ch);
         $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        curl_close($ch);
 
         if ($body === false) {
             throw new RuntimeException('Kerio connection failed: ' . $error);
@@ -74,6 +75,13 @@ final class KerioApiClient
             throw new RuntimeException('Kerio returned HTTP ' . $status . '.');
         }
         return $decoded;
+    }
+
+    public function __destruct()
+    {
+        if ($this->curlHandle) {
+            curl_close($this->curlHandle);
+        }
     }
 
     public function getActiveHosts(): array
