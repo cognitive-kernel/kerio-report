@@ -1,3 +1,4 @@
 <?php
-// Root entry point: serve the dashboard at /kerio_report/.
-require __DIR__ . '/public/index.php';
+declare(strict_types=1);
+header('Location: public/index.php', true, 302);
+exit;

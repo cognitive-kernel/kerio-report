@@ -1,0 +1,7 @@
+RewriteEngine On
+
+# Keep the root URL working while serving application pages from /public.
+RewriteCond %{REQUEST_URI} !^/kerio_report/public/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.+)$ public/$1 [L]
