@@ -1,26 +1,26 @@
 # Kerio Report
 
-PHP 8.2 / Apache / MySQL reporting application for Kerio Control 9.6.1.
+سامانه گزارش‌گیری فارسی و راست‌چین برای Kerio Control با PHP 8.2، Apache و MySQL.
 
-## Current integration findings
+## صفحات گزارش
+- داشبورد کلی: آمار دستگاه‌ها، فعالیت امروز، نمودار ترافیک هفت روز اخیر و آخرین رویدادها.
+- گزارش بازه زمانی: انتخاب تاریخ شروع و پایان، ترافیک روزانه و خلاصه اتصالات.
+- گزارش سیستم‌ها: خلاصه فعالیت، تعداد اتصال و درخواست وب و ترافیک ثبت‌شده برای هر دستگاه.
+- وضعیت لحظه‌ای: آخرین وضعیت ذخیره‌شده دستگاه‌ها با تازه‌سازی ۳۰ ثانیه‌ای.
+- اتصالات شبکه: فهرست اتصال‌ها با فیلتر بازه زمانی.
+- وب‌سایت‌ها: تعداد درخواست‌ها و URLهای ثبت‌شده با فیلتر بازه زمانی.
 
-- JSON-RPC endpoint: `https://KERIO_HOST:4081/admin/api/jsonrpc/`
-- Active hosts: `ActiveHosts.get`
-- Logs: `Logs.get` with `logName=connection|http|web`, `fromLine`, and `countLines`
-- The tested `web` log contains HTTP URLs and source IPs. HTTPS page paths are generally not visible without TLS inspection.
-- Connection log records include source/destination, protocol, duration and byte counters. Byte direction must be verified before mapping to upload/download fields.
-- Active-host counters are cumulative snapshots, so polling and delta handling are required.
+## نصب روی XAMPP
+1. مخزن را در پوشه‌ای مانند `C:\\xampp\\htdocs\\kerio_report` قرار دهید.
+2. دیتابیس را با اجرای `database/schema.sql` ایجاد کنید.
+3. فایل `config.example.php` را به `config.local.php` کپی و مشخصات محلی MySQL و Kerio را تکمیل کنید.
+4. Apache و MySQL را اجرا کنید.
+5. آدرس `http://localhost:8080/kerio_report/public/` را باز کنید.
 
-## Setup
-
-1. Install XAMPP with PHP 8.2 Thread Safe x64 and enable `sqlsrv` only if separately required by other applications. Kerio reporting itself uses MySQL.
-2. Copy this repository to `D:\\xampp\\htdocs\\kerio-report`.
-3. Import `database/schema.sql` into MySQL.
-4. Copy `config.example.php` to `config.local.php` and set local database and Kerio credentials. Do not commit the local file.
-5. Configure Apache to use port 8080 and open `http://localhost:8080/kerio-report/public/`.
-
-## Security
-
-- Keep `config.local.php` out of Git.
-- Use a trusted Kerio TLS certificate and keep certificate verification enabled.
-- Restrict access to the application to trusted administrators.
+## نکات مهم
+- صفحات گزارش فقط داده‌های موجود در دیتابیس را نمایش می‌دهند؛ تا زمان تکمیل و اجرای Collector ممکن است گزارش‌ها خالی باشند.
+- صفحه لحظه‌ای آخرین نمونه ذخیره‌شده را نشان می‌دهد و جایگزین polling مستقیم Kerio نیست.
+- حجم ترافیک نمونه‌ها با واحد KB در schema نگهداری می‌شود؛ صحت تفکیک upload/download باید در Collector بر اساس رفتار واقعی API کنترل شود.
+- لاگ HTTP می‌تواند URL درخواست‌های قابل مشاهده را ثبت کند؛ مسیر کامل صفحات HTTPS معمولاً از لاگ عادی قابل استخراج نیست.
+- فایل `config.local.php` شامل رمزهاست و نباید به Git ارسال شود.
+- Chart.js و فونت Vazirmatn از CDN بارگیری می‌شوند و برای نمایش نمودار و فونت به دسترسی اینترنت مرورگر نیاز است.
