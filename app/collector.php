@@ -77,6 +77,56 @@ final class KerioApiClient
         return $decoded;
     }
 
+    public function getLogTail(string $logName, int $count = 5): array
+    {
+        $login = $this->request('Session.login', [
+            'userName' => $this->username,
+            'password' => $this->password,
+            'application' => [
+                'name' => $this->application,
+                'vendor' => 'Kerio',
+                'version' => '1.0',
+            ],
+        ]);
+
+        $token = $login['result']['token'] ?? null;
+        if (!is_string($token) || $token === '') {
+            throw new RuntimeException('Kerio login response did not contain a session token.');
+        }
+
+        if (!in_array($logName, ['connection', 'http'], true)) {
+            throw new InvalidArgumentException('Unsupported Kerio log type.');
+        }
+        $count = max(1, min(50, $count));
+        $response = $this->request('Logs.get', [
+            'logName' => $logName,
+            'fromLine' => -1,
+            'countLines' => $count,
+        ], $token);
+
+        $result = $response['result'] ?? [];
+        $rows = $result['viewport'] ?? [];
+        if (!is_array($rows)) {
+            throw new RuntimeException('Kerio Logs.get returned an unexpected viewport structure.');
+        }
+        $lines = [];
+        foreach ($rows as $row) {
+            if (is_array($row) && isset($row['content'])) {
+                $lines[] = (string)$row['content'];
+            } elseif (is_string($row)) {
+                $lines[] = $row;
+            }
+        }
+
+        return [
+            'log' => $logName,
+            'total_items' => (int)($result['totalItems'] ?? 0),
+            'returned' => count($lines),
+            'lines' => $lines,
+            'raw_result_keys' => array_keys($result),
+        ];
+    }
+
     public function __destruct()
     {
         if ($this->curlHandle) {
