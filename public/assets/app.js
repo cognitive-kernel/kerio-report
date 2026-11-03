@@ -29,7 +29,7 @@
     if (rows.length === 0) {
       const tr = document.createElement("tr");
       const td = document.createElement("td");
-      td.colSpan = 4;
+      td.colSpan = 5;
       td.textContent = "هنوز نمونه ترافیکی ثبت نشده است.";
       tr.appendChild(td);
       body.appendChild(tr);
@@ -40,6 +40,7 @@
       const values = [
         item.hostname || "نامشخص",
         item.ip_address || "",
+        item.mac_address || "نامشخص",
         Number(item.consumption_kb || 0).toLocaleString("fa-IR", { maximumFractionDigits: 2 }) + " KB",
         item.sampled_at || ""
       ];
