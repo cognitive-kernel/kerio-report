@@ -148,7 +148,7 @@ final class KerioLogSynchronizer
         preg_match('/\[Rule\]\s+(.*?)(?=\s+\[Service\]|\s+\[Connection\])/', $line, $rule);
         preg_match('/\[Service\]\s+(.*?)(?=\s+\[Connection\])/', $line, $service);
         // Kerio source endpoints may be "IP:port" or "hostname (IP):port".
-        if (!preg_match('/\[Connection\]\s+(\S+)\s+(.+?)\s+->\s+(.+?)\s*$/', $line, $connection)) {
+        if (!preg_match('/\\[Connection\\]\\s+(\\S+)\\s+(.+?)\\s+->\\s+(.+?)\\s+\\[Iface\\]/', $line, $connection)) {
             return null;
         }
         $protocol = $connection[1];
