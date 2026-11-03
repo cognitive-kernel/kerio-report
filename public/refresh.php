@@ -27,6 +27,9 @@ try {
     $collection = collectActiveHosts();
     $api = new KerioApiClient($config['kerio'] ?? []);
     $synchronizer = new KerioLogSynchronizer($pdo, $api);
+    // Import recent records immediately; keep the sequential cursor for historical backfill.
+    $connectionTail = $synchronizer->syncTail('connection', 2000);
+    $httpTail = $synchronizer->syncTail('http', 2000);
     $connectionSync = $synchronizer->sync('connection', 250, 1);
     $httpSync = $synchronizer->sync('http', 250, 1);
 
@@ -49,6 +52,8 @@ try {
         'success' => true,
         'busy' => false,
         'collected' => $collection,
+        'connection_tail' => $connectionTail,
+        'http_tail' => $httpTail,
         'connection_sync' => $connectionSync,
         'http_sync' => $httpSync,
         'live_top' => $liveTop,

@@ -93,6 +93,50 @@ final class KerioLogSynchronizer
         ];
     }
 
+    /**
+     * Import the newest log window without moving the historical backfill cursor.
+     * INSERT IGNORE and the unique Kerio log key make overlapping tail windows safe.
+     */
+    public function syncTail(string $type, int $count = 2000): array
+    {
+        if (!in_array($type, ['connection', 'http'], true)) {
+            throw new InvalidArgumentException('Unsupported log type.');
+        }
+
+        $batch = $this->api->getLogTail($type, $count);
+        $inserted = 0;
+        $parsed = 0;
+        $this->pdo->beginTransaction();
+        try {
+            foreach ($batch['lines'] as $line) {
+                $record = $type === 'connection'
+                    ? $this->parseConnectionLine($line)
+                    : $this->parseHttpLine($line);
+                if ($record === null) {
+                    continue;
+                }
+                $parsed++;
+                $inserted += $type === 'connection'
+                    ? $this->insertConnection($record)
+                    : $this->insertWeb($record);
+            }
+            $this->pdo->commit();
+        } catch (Throwable $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+
+        return [
+            'log' => $type,
+            'mode' => 'tail',
+            'requested' => $count,
+            'returned' => $batch['returned'],
+            'total_items' => $batch['total_items'],
+            'parsed' => $parsed,
+            'inserted' => $inserted,
+        ];
+    }
+
     private function parseConnectionLine(string $line): ?array
     {
         if (!preg_match('/^\[(\d{2}\/\w{3}\/\d{4} \d{2}:\d{2}:\d{2})\]\s+\[ID\]\s+(\d+)/', $line, $head)) {

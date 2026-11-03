@@ -126,7 +126,7 @@ final class KerioApiClient
 
     public function getLogTail(string $logName, int $count = 5): array
     {
-        return $this->getLogBatch($logName, -1, max(1, min(50, $count)));
+        return $this->getLogBatch($logName, -1, max(1, min(5000, $count)));
     }
 
     public function __destruct()
