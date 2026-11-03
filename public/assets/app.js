@@ -22,47 +22,37 @@
   controls.append(status, toggle);
   header.appendChild(controls);
 
-  const formatMacAddress = (value) => {
-    const raw = String(value || "").trim();
-    const compact = raw.replace(/[^0-9a-f]/gi, "");
-    return compact.length === 12 ? compact.toLowerCase() : raw.toLowerCase();
-  };
+  const refreshPageContent = async () => {
+    const response = await fetch(window.location.href, {
+      method: "GET",
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: { "Accept": "text/html", "X-Requested-With": "XMLHttpRequest" }
+    });
+    if (!response.ok) throw new Error("بارگذاری گزارش‌ها ناموفق بود (HTTP " + response.status + ")");
+    const parsed = new DOMParser().parseFromString(await response.text(), "text/html");
+    const currentMain = document.querySelector("main.main");
+    const updatedMain = parsed.querySelector("main.main");
+    if (!currentMain || !updatedMain) throw new Error("ساختار صفحه گزارش قابل به‌روزرسانی نیست");
+    const currentHeader = currentMain.querySelector(":scope > header");
+    const updatedHeader = updatedMain.querySelector(":scope > header");
+    if (!currentHeader || !updatedHeader) throw new Error("سربرگ صفحه پیدا نشد");
 
-  const renderLiveTop = (rows) => {
-    const body = document.getElementById("live-consumers-body");
-    if (!body || !Array.isArray(rows)) return;
-    body.replaceChildren();
-    if (rows.length === 0) {
-      const tr = document.createElement("tr");
-      const td = document.createElement("td");
-      td.colSpan = 5;
-      td.textContent = "هنوز نمونه ترافیکی ثبت نشده است.";
-      tr.appendChild(td);
-      body.appendChild(tr);
-      return;
-    }
-    for (const item of rows) {
-      const tr = document.createElement("tr");
-      const values = [
-        item.hostname || "نامشخص",
-        item.ip_address || "",
-        formatMacAddress(item.mac_address) || "نامشخص",
-        Number(item.consumption_kb || 0).toLocaleString("fa-IR", { maximumFractionDigits: 2 }) + " KB",
-        item.sampled_at || ""
-      ];
-      for (const value of values) {
-        const td = document.createElement("td");
-        td.textContent = String(value);
-        tr.appendChild(td);
-      }
-      body.appendChild(tr);
-    }
+    const preservedControls = currentHeader.querySelector(".refresh-controls");
+    currentHeader.replaceWith(updatedHeader);
+    if (preservedControls) updatedHeader.appendChild(preservedControls);
+    Array.from(currentMain.children)
+      .filter(node => node.tagName !== "HEADER")
+      .forEach(node => node.remove());
+    Array.from(updatedMain.children)
+      .filter(node => node.tagName !== "HEADER")
+      .forEach(node => currentMain.appendChild(document.importNode(node, true)));
   };
 
   const refresh = async () => {
     if (!running || inFlight || document.visibilityState !== "visible") return;
     inFlight = true;
-    status.textContent = "در حال دریافت اطلاعات از Kerio...";
+    status.textContent = "در حال دریافت اطلاعات تازه از Kerio...";
     try {
       const response = await fetch("refresh.php", {
         method: "GET",
@@ -72,8 +62,13 @@
       });
       const result = await response.json();
       if (!response.ok || result.success !== true) throw new Error(result.error || "HTTP " + response.status);
-      renderLiveTop(result.live_top);
-      status.textContent = "به‌روزرسانی شد: " + new Date(result.finished_at).toLocaleTimeString("fa-IR");
+      if (result.busy) {
+        status.textContent = "به‌روزرسانی دیگری در حال اجراست؛ نوبت بعدی تلاش می‌شود";
+        return;
+      }
+      await refreshPageContent();
+      status.textContent = "دریافت از Kerio و گزارش‌ها به‌روز شد: " +
+        new Date(result.finished_at).toLocaleTimeString("fa-IR");
     } catch (error) {
       status.textContent = "خطا در به‌روزرسانی: " + error.message;
     } finally {
