@@ -147,19 +147,37 @@ final class KerioLogSynchronizer
 
         preg_match('/\[Rule\]\s+(.*?)(?=\s+\[Service\]|\s+\[Connection\])/', $line, $rule);
         preg_match('/\[Service\]\s+(.*?)(?=\s+\[Connection\])/', $line, $service);
-        if (!preg_match('/\[Connection\]\s+(\S+)\s+(\S+)\s+->\s+(.*?)\s+\((\d{1,3}(?:\.\d{1,3}){3})\):(\d+)/', $line, $connection)) {
-            if (!preg_match('/\[Connection\]\s+(\S+)\s+(\S+)\s+->\s+(\d{1,3}(?:\.\d{1,3}){3}):(\d+)/', $line, $simple)) {
-                return null;
-            }
-            $protocol = $simple[1]; $source = $simple[2]; $destinationHost = null;
-            $destinationIp = $simple[3]; $destinationPort = (int)$simple[4];
-        } else {
-            $protocol = $connection[1]; $source = $connection[2];
-            $destinationHost = trim($connection[3]);
-            $destinationIp = $connection[4]; $destinationPort = (int)$connection[5];
+        // Kerio source endpoints may be "IP:port" or "hostname (IP):port".
+        if (!preg_match('/\[Connection\]\s+(\S+)\s+(.+?)\s+->\s+(.+?)\s*$/', $line, $connection)) {
+            return null;
         }
-        if (!preg_match('/^(\d{1,3}(?:\.\d{1,3}){3}):(\d+)$/', $source, $src)) return null;
-        if (!filter_var($src[1], FILTER_VALIDATE_IP)) return null;
+        $protocol = $connection[1];
+        $source = trim($connection[2]);
+        $destination = trim($connection[3]);
+
+        if (preg_match('/^(.*?)\s+\(((?:\d{1,3}\.){3}\d{1,3})\):(\d+)$/', $source, $srcNamed)) {
+            $sourceIp = $srcNamed[2];
+            $sourcePort = (int)$srcNamed[3];
+        } elseif (preg_match('/^((?:\d{1,3}\.){3}\d{1,3}):(\d+)$/', $source, $srcSimple)) {
+            $sourceIp = $srcSimple[1];
+            $sourcePort = (int)$srcSimple[2];
+        } else {
+            return null;
+        }
+        if (!filter_var($sourceIp, FILTER_VALIDATE_IP)) return null;
+
+        $destinationHost = null;
+        if (preg_match('/^(.*?)\s+\(((?:\d{1,3}\.){3}\d{1,3})\):(\d+)$/', $destination, $dstNamed)) {
+            $destinationHost = trim($dstNamed[1]);
+            $destinationIp = $dstNamed[2];
+            $destinationPort = (int)$dstNamed[3];
+        } elseif (preg_match('/^((?:\d{1,3}\.){3}\d{1,3}):(\d+)$/', $destination, $dstSimple)) {
+            $destinationIp = $dstSimple[1];
+            $destinationPort = (int)$dstSimple[2];
+        } else {
+            return null;
+        }
+        if (!filter_var($destinationIp, FILTER_VALIDATE_IP)) return null;
 
         preg_match('/\[Iface\]\s+(.*?)(?=\s+\[Duration\])/', $line, $iface);
         preg_match('/\[Duration\]\s+(\d+)\s+sec/', $line, $duration);
@@ -170,7 +188,7 @@ final class KerioLogSynchronizer
             'key' => $key, 'occurred_at' => $date->format('Y-m-d H:i:s'),
             'connection_id' => $head[2], 'rule_name' => $rule[1] ?? null,
             'service_name' => $service[1] ?? null, 'protocol' => $protocol,
-            'source_ip' => $src[1], 'source_port' => (int)$src[2],
+            'source_ip' => $sourceIp, 'source_port' => $sourcePort,
             'destination_host' => $destinationHost, 'destination_ip' => $destinationIp,
             'destination_port' => $destinationPort, 'interface_name' => $iface[1] ?? null,
             'duration_seconds' => isset($duration[1]) ? (int)$duration[1] : null,
