@@ -22,6 +22,12 @@
   controls.append(status, toggle);
   header.appendChild(controls);
 
+  const formatMacAddress = (value) => {
+    const raw = String(value || "").trim();
+    const compact = raw.replace(/[^0-9a-f]/gi, "");
+    return compact.length === 12 ? compact.toLowerCase() : raw.toLowerCase();
+  };
+
   const renderLiveTop = (rows) => {
     const body = document.getElementById("live-consumers-body");
     if (!body || !Array.isArray(rows)) return;
@@ -40,7 +46,7 @@
       const values = [
         item.hostname || "نامشخص",
         item.ip_address || "",
-        item.mac_address || "نامشخص",
+        formatMacAddress(item.mac_address) || "نامشخص",
         Number(item.consumption_kb || 0).toLocaleString("fa-IR", { maximumFractionDigits: 2 }) + " KB",
         item.sampled_at || ""
       ];

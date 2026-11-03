@@ -7,7 +7,7 @@ try {
  $sort=['hostname'=>'hostname','ip_address'=>'ip_address','mac_address'=>'mac_address','is_active'=>'is_active','connections'=>'connections','requests'=>'requests','down_kb'=>'down_kb','up_kb'=>'up_kb','total_bytes'=>'total_bytes','last_seen'=>'last_seen'];
  $p=queryPage($fromSql,'',[],array_keys($cols),$sort,'total_bytes');
  echo '<section class="panel"><h2>خلاصه مصرف و فعالیت هر دستگاه</h2>'; tableControls($p,$cols); echo '<table>';tableHeader($cols,$p);echo '<tbody>';
- foreach($p['rows'] as $r) echo '<tr><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['ip_address']).'</td><td>'.e($r['mac_address']).'</td><td>'.($r['is_active']?'فعال':'غیرفعال').'</td><td>'.e($r['connections']).'</td><td>'.e($r['requests']).'</td><td>'.e(formatBytes((float)$r['down_kb']*1024)).'</td><td>'.e(formatBytes((float)$r['up_kb']*1024)).'</td><td data-sort-value="'.e($r['total_bytes']).'">'.e(formatBytes($r['total_bytes'])).'</td><td>'.e($r['last_seen']).'</td></tr>';
+ foreach($p['rows'] as $r) echo '<tr><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['ip_address']).'</td><td>'.e(formatMacAddress($r['mac_address'])).'</td><td>'.($r['is_active']?'فعال':'غیرفعال').'</td><td>'.e($r['connections']).'</td><td>'.e($r['requests']).'</td><td>'.e(formatBytes((float)$r['down_kb']*1024)).'</td><td>'.e(formatBytes((float)$r['up_kb']*1024)).'</td><td data-sort-value="'.e($r['total_bytes']).'">'.e(formatBytes($r['total_bytes'])).'</td><td>'.e($r['last_seen']).'</td></tr>';
  echo '</tbody></table>';tablePagination($p);if(!$p['rows'])echo '<div class="empty">دستگاهی ثبت نشده است.</div>';echo '</section>';
 } catch(Throwable $ex){echo '<section class="panel">'.e($ex->getMessage()).'</section>';}
 pageEnd();

@@ -10,7 +10,7 @@ try {
  $search=['c.occurred_at','d.hostname','c.source_ip','d.mac_address','c.source_port','c.destination_host','c.destination_ip','c.destination_port','c.protocol','c.service_name','c.duration_seconds','c.bytes_total'];
  $p=queryPage($fromSql,$where,$params,$search,$sort,'occurred_at');
  echo '<section class="panel"><h2>اتصالات شبکه</h2>'; tableControls($p,$cols); echo '<table>'; tableHeader($cols,$p); echo '<tbody>';
- foreach($p['rows'] as $r) echo '<tr><td>'.e($r['occurred_at']).'</td><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['source_ip']).'</td><td>'.e($r['mac_address']?:'نامشخص').'</td><td>'.e($r['source_port']).'</td><td>'.e($r['destination_host']).'</td><td>'.e($r['destination_ip']).'</td><td>'.e($r['destination_port']).'</td><td>'.e($r['protocol']).'</td><td>'.e($r['service_name']).'</td><td>'.e($r['duration_seconds']).'</td><td data-sort-value="'.e($r['bytes_total']).'">'.e(formatBytes($r['bytes_total'])).'</td></tr>';
+ foreach($p['rows'] as $r) echo '<tr><td>'.e($r['occurred_at']).'</td><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['source_ip']).'</td><td>'.e(formatMacAddress($r['mac_address']?:'نامشخص')).'</td><td>'.e($r['source_port']).'</td><td>'.e($r['destination_host']).'</td><td>'.e($r['destination_ip']).'</td><td>'.e($r['destination_port']).'</td><td>'.e($r['protocol']).'</td><td>'.e($r['service_name']).'</td><td>'.e($r['duration_seconds']).'</td><td data-sort-value="'.e($r['bytes_total']).'">'.e(formatBytes($r['bytes_total'])).'</td></tr>';
  echo '</tbody></table>'; tablePagination($p); if(!$p['rows']) echo '<div class="empty">رکوردی یافت نشد.</div>'; echo '</section>';
 } catch(Throwable $ex){echo '<section class="panel">'.e($ex->getMessage()).'</section>';}
 pageEnd();

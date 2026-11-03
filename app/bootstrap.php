@@ -23,6 +23,12 @@ function db(): PDO {
     return $pdo;
 }
 function e(mixed $value): string { return htmlspecialchars((string)($value ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+function formatMacAddress(mixed $mac): string {
+    $value = trim((string)($mac ?? ''));
+    if ($value === '') return '';
+    $compact = preg_replace('/[^0-9a-f]/i', '', $value) ?? '';
+    return strlen($compact) === 12 ? strtolower($compact) : strtolower($value);
+}
 function queryRows(string $sql, array $params = []): array {
     $stmt = db()->prepare($sql); $stmt->execute($params); return $stmt->fetchAll();
 }

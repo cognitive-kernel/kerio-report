@@ -12,7 +12,7 @@ try {
  $fromSql='(SELECT MAX(d.hostname) hostname,c.source_ip,MAX(d.mac_address) mac_address,COUNT(*) total,SUM(COALESCE(c.bytes_total,0)) bytes FROM connection_logs c LEFT JOIN devices d ON d.id=c.device_id WHERE c.occurred_at BETWEEN '.db()->quote($from).' AND '.db()->quote($to).' GROUP BY c.source_ip) traffic_by_ip';
  $p=queryPage($fromSql,'',[],array_keys($cols),$sort,'total');
  echo '<section class="panel"><h2>پراکندگی اتصالات بر اساس سیستم</h2>';tableControls($p,$cols);echo '<table>';tableHeader($cols,$p);echo '<tbody>';
- foreach($p['rows'] as $r)echo '<tr><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['source_ip']).'</td><td>'.e($r['mac_address']?:'نامشخص').'</td><td>'.e($r['total']).'</td><td data-sort-value="'.e($r['bytes']).'">'.e(formatBytes($r['bytes'])).'</td></tr>';
+ foreach($p['rows'] as $r)echo '<tr><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['source_ip']).'</td><td>'.e(formatMacAddress($r['mac_address']?:'نامشخص')).'</td><td>'.e($r['total']).'</td><td data-sort-value="'.e($r['bytes']).'">'.e(formatBytes($r['bytes'])).'</td></tr>';
  echo '</tbody></table>';tablePagination($p);echo '</section>';
 } catch(Throwable $ex){echo '<section class="panel">'.e($ex->getMessage()).'</section>';}
 pageEnd();

@@ -9,9 +9,9 @@ try {
  $normalizedMac = "LOWER(REPLACE(REPLACE(REPLACE(TRIM(d.mac_address), '-', ''), ':', ''), ' ', ''))";
  $rangeTop=queryRows("SELECT $normalizedMac AS mac_address,MAX(d.hostname) hostname,GROUP_CONCAT(DISTINCT d.ip_address ORDER BY d.ip_address SEPARATOR ', ') ip_addresses,SUM(COALESCE(c.bytes_total,0)) total_bytes FROM connection_logs c FORCE INDEX (idx_connection_time_device_bytes) INNER JOIN devices d ON d.id=c.device_id WHERE c.occurred_at BETWEEN ? AND ? AND d.mac_address IS NOT NULL AND d.mac_address <> '' GROUP BY $normalizedMac ORDER BY total_bytes DESC LIMIT 10",[$from,$to]);
  echo '<div class="columns"><section class="panel"><h2>۱۰ مصرف‌کننده برتر در لحظه (آخرین نمونه ثبت‌شده)</h2><table><thead><tr><th>نام سیستم</th><th>IP</th><th>MAC</th><th>مصرف در آخرین نمونه</th><th>زمان نمونه</th></tr></thead><tbody id="live-consumers-body">';
- foreach($liveTop as $r) echo '<tr><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['ip_address']).'</td><td>'.e($r['mac_address']?:'نامشخص').'</td><td>'.e(number_format((float)$r['consumption_kb'],2).' KB').'</td><td>'.e($r['sampled_at']).'</td></tr>';
+ foreach($liveTop as $r) echo '<tr><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['ip_address']).'</td><td>'.e(formatMacAddress($r['mac_address']?:'نامشخص')).'</td><td>'.e(number_format((float)$r['consumption_kb'],2).' KB').'</td><td>'.e($r['sampled_at']).'</td></tr>';
  if(!$liveTop) echo '<tr><td colspan="5">هنوز نمونه ترافیکی ثبت نشده است.</td></tr>'; echo '</tbody></table></section><section class="panel"><h2>۱۰ مصرف‌کننده برتر در بازه انتخابی</h2><table><thead><tr><th>نام سیستم</th><th>IP</th><th>MAC</th><th>مصرف کل</th></tr></thead><tbody>';
- foreach($rangeTop as $r) echo '<tr><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['ip_addresses']).'</td><td>'.e($r['mac_address']).'</td><td>'.e(formatBytes($r['total_bytes'])).'</td></tr>';
+ foreach($rangeTop as $r) echo '<tr><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['ip_addresses']).'</td><td>'.e(formatMacAddress($r['mac_address'])).'</td><td>'.e(formatBytes($r['total_bytes'])).'</td></tr>';
  if(!$rangeTop) echo '<tr><td colspan="4">در این بازه داده‌ای ثبت نشده است.</td></tr>'; echo '</tbody></table></section></div>';
  $traffic=queryRows('SELECT DATE(occurred_at) day,SUM(COALESCE(bytes_in,0))/1024 down_kb,SUM(COALESCE(bytes_out,0))/1024 up_kb FROM connection_logs WHERE occurred_at>=DATE_SUB(NOW(),INTERVAL 7 DAY) GROUP BY DATE(occurred_at) ORDER BY day');
  chart('overviewTraffic','bar',array_column($traffic,'day'),[['label'=>'دریافت (KB)','data'=>array_map('floatval',array_column($traffic,'down_kb'))],['label'=>'ارسال (KB)','data'=>array_map('floatval',array_column($traffic,'up_kb'))]]);
@@ -19,7 +19,7 @@ try {
  $sort=['occurred_at'=>'occurred_at','hostname'=>'hostname','source_ip'=>'source_ip','mac_address'=>'mac_address','destination_host'=>'destination_host','service_name'=>'service_name'];
  $p=queryPage('connection_logs c LEFT JOIN devices d ON d.id=c.device_id','',[],['c.occurred_at','d.hostname','c.source_ip','d.mac_address','c.destination_host','c.service_name'],$sort,'occurred_at');
  echo '<section class="panel"><h2>اتصالات ثبت‌شده</h2>';tableControls($p,$cols);echo '<table>';tableHeader($cols,$p);echo '<tbody>';
- foreach($p['rows'] as $r)echo '<tr><td>'.e($r['occurred_at']).'</td><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['source_ip']).'</td><td>'.e($r['mac_address']?:'نامشخص').'</td><td>'.e($r['destination_host']).'</td><td>'.e($r['service_name']).'</td></tr>';
+ foreach($p['rows'] as $r)echo '<tr><td>'.e($r['occurred_at']).'</td><td>'.e($r['hostname']?:'نامشخص').'</td><td>'.e($r['source_ip']).'</td><td>'.e(formatMacAddress($r['mac_address']?:'نامشخص')).'</td><td>'.e($r['destination_host']).'</td><td>'.e($r['service_name']).'</td></tr>';
  echo '</tbody></table>';tablePagination($p);echo '</section>';
 } catch(Throwable $ex){echo '<section class="panel">خطا در خواندن گزارش‌ها: '.e($ex->getMessage()).'</section>';}
 pageEnd();
