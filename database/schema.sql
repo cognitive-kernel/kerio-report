@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS connection_logs (
   UNIQUE KEY uq_connection_log_key (kerio_log_key),
   KEY idx_connection_time_ip (occurred_at, source_ip),
   KEY idx_connection_device_time_bytes (device_id, occurred_at, bytes_total),
+  KEY idx_connection_time_device_bytes (occurred_at, device_id, bytes_total),
   KEY idx_connection_destination (destination_host, destination_ip),
   CONSTRAINT fk_connection_device FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
